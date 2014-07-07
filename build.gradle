@@ -4,14 +4,24 @@ import com.android.build.gradle.api.TestVariant
 //project.configurations.compile.getProperties().each { println it }
 //println android.sourceSets.main.java.srcDirs
 
+apply plugin: "jacoco"
+apply plugin: "java"
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.0'
+}
+
 buildscript {
     repositories {
+	mavenLocal()
         mavenCentral()
         maven { url "https://oss.sonatype.org/content/repositories/snapshots" }
+	maven { url "http://repository.pentaho.org/artifactory/repo" }
+	maven { url "http://typesafe.artifactoryonline.com/typesafe/repo" }
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:0.6.+'
-        classpath 'com.novoda.gradle:robolectric-plugin:0.0.1-SNAPSHOT'
+        classpath 'com.android.tools.build:gradle:0.12.+'
+        classpath 'com.novoda.gradle:robolectric-plugin:0.0.1'
     }
 }
 
@@ -19,11 +29,11 @@ configure(allprojects) {
     group = 'com.octo.android'
 
     ext.androidVersion           = "4.1.1.4"
-    ext.androidSDKVersion        = "17"
-    ext.androidBuildToolsVersion = "17.0"
+    ext.androidSDKVersion        = "19.1"
+    ext.androidBuildToolsVersion = "19.1"
     ext.androidSupportVersion    = "18.0.0"
     ext.jodaLibraryVersion       = "2.2"
-    ext.robotiumVersion          = "4.0"
+    ext.robotiumVersion          = "4.3.1"
     ext.hamcrestVersion          = "1.3"
     ext.spoonVersion             = "1.0.1"
     ext.festVersion              = "1.0.3"
@@ -60,15 +70,15 @@ project('android-sample') {
         compile "joda-time:joda-time:$jodaLibraryVersion"
         compile "com.android.support:support-v4:$androidSupportVersion"
 
-        instrumentTestCompile "com.jayway.android.robotium:robotium-solo:$robotiumVersion"
-        instrumentTestCompile "org.hamcrest:hamcrest-core:$hamcrestVersion"
-        instrumentTestCompile "com.squareup.spoon:spoon-client:$spoonVersion"
-        instrumentTestCompile "com.squareup:fest-android:$festVersion"
-        instrumentTestCompile "com.google.dexmaker:dexmaker:$dexmakerVersion"
-        instrumentTestCompile "com.google.dexmaker:dexmaker-mockito:$dexmakerMockitoVersion"
-        instrumentTestCompile "org.easymock:easymock:$easyMockVersion" exclude group: "cglib"
-        instrumentTestCompile "org.mockito:mockito-core:$mockitoVersion"
-        instrumentTestCompile "org.boundbox:boundbox-library:$boundBoxVersion"
+        androidTestCompile "com.jayway.android.robotium:robotium-solo:$robotiumVersion"
+        androidTestCompile "org.hamcrest:hamcrest-core:$hamcrestVersion"
+        androidTestCompile "com.squareup.spoon:spoon-client:$spoonVersion"
+        androidTestCompile "com.squareup:fest-android:$festVersion"
+        androidTestCompile "com.google.dexmaker:dexmaker:$dexmakerVersion"
+        androidTestCompile "com.google.dexmaker:dexmaker-mockito:$dexmakerMockitoVersion"
+        androidTestCompile "org.easymock:easymock:$easyMockVersion" exclude group: "cglib"
+        androidTestCompile "org.mockito:mockito-core:$mockitoVersion"
+        androidTestCompile "org.boundbox:boundbox-library:$boundBoxVersion"
     }
 
 
@@ -87,8 +97,8 @@ project('android-sample') {
                 assets.srcDirs = ['assets']
             }
 
-            instrumentTest.setRoot('../android-sample-tests')
-            instrumentTest {
+            androidTest.setRoot('../android-sample-tests')
+            androidTest {
                 java { srcDirs = [
                         '../android-sample-tests/src/main/java'
                     ] }
@@ -103,7 +113,7 @@ project('android-sample') {
         }
 
         defaultConfig {
-            testPackageName "com.octo.android.sample.test"
+            testApplicationId "com.octo.android.sample.test"
             testInstrumentationRunner "android.test.InstrumentationTestRunner"
         }
 
@@ -127,6 +137,13 @@ project('android-sample') {
                 }
             }
         }
+	  
+	packagingOptions {
+	    exclude 'META-INF/LICENSE'
+	    exclude 'META-INF/NOTICE'
+	    exclude 'META-INF/INDEX.LIST'
+	    exclude 'AndroidManifest.xml'
+	}
     }
 
     classycle {
@@ -154,7 +171,8 @@ project('android-sample') {
     task pmd(type: Pmd) {
         ruleSetFiles = files('../config/quality/pmd/pmd-ruleset.xml')
         ruleSets = ["basic", "braces", "strings"]
-        source = fileTree(android.sourceSets.main.java.srcDirs)
+        //source = fileTree(android.sourceSets.main.java.srcDirs)
+	source = fileTree('src/main/java/')
     }
 
 
@@ -168,7 +186,7 @@ project('android-sample') {
             property "sonar.branch", "gradle"
             property "sonar.dynamicAnalysis", "reuseReports"
             properties["sonar.sources"] = android.sourceSets.main.java.srcDirs
-            properties["sonar.tests"] = android.sourceSets.instrumentTest.java.srcDirs
+            properties["sonar.tests"] = android.sourceSets.androidTest.java.srcDirs
             properties["sonar.binaries"] = file("build/classes/debug")
             property "sonar.junit.reportsPath","build/instrumentTest-results/connected/"
         }
@@ -197,7 +215,7 @@ project('android-sample-robolectric-tests') {
         //compile files('libs/android-support-v4.jar')
 
         // had to deploy to sonatype to get AAR to work
-        compile 'com.novoda:actionbarsherlock:4.3.2-SNAPSHOT' exclude group: 'com.google.android'
+        compile 'com.actionbarsherlock:actionbarsherlock:4.4.0' exclude group: 'com.google.android'
         compile "joda-time:joda-time:$jodaLibraryVersion"
         compile "com.android.support:support-v4:$androidSupportVersion"
 
@@ -212,7 +230,7 @@ project('android-sample-robolectric-tests') {
 
     android {
         compileSdkVersion 17
-        buildToolsVersion "17.0.0"
+        buildToolsVersion "19.1"
 
         sourceSets {
             main {
@@ -240,6 +258,10 @@ project('android-sample-robolectric-tests') {
             minSdkVersion 7
             targetSdkVersion 17
         }
+	
+	packagingOptions {
+	    exclude 'AndroidManifest.xml'
+	}
     }
 
     task libs(type: Sync) {
@@ -271,7 +293,7 @@ project('android-sample-robolectric-tests') {
             property "sonar.branch", "gradle-robolectric"
             property "sonar.dynamicAnalysis", "reuseReports"
             properties["sonar.sources"] = android.sourceSets.main.java.srcDirs
-            properties["sonar.tests"] = android.sourceSets.instrumentTest.java.srcDirs
+            properties["sonar.tests"] = android.sourceSets.androidTest.java.srcDirs
             properties["sonar.binaries"] = file("build/classes/debug")
             property "sonar.junit.reportsPath","build/test-results/"
         }
@@ -300,7 +322,7 @@ project('android-sample-espresso-tests') {
         compile "joda-time:joda-time:$jodaLibraryVersion"
         compile "com.android.support:support-v4:$androidSupportVersion"
         
-        instrumentTestCompile "com.google.android:android-espresso:1.0-SNAPSHOT"
+        androidTestCompile "com.google.android:android-espresso:1.0-SNAPSHOT"
     }
 
 
@@ -335,7 +357,7 @@ project('android-sample-espresso-tests') {
         }
 
         defaultConfig {
-            testPackageName "com.octo.android.sample.espressotest"
+            testApplicationId "com.octo.android.sample.espressotest"
             testInstrumentationRunner "com.google.android.apps.common.testing.testrunner.GoogleInstrumentationTestRunner"
         }
 
@@ -351,7 +373,20 @@ project('android-sample-espresso-tests') {
     }
 
 }
-
+//------------------------
+//-- Jacoco 
+//------------------------
+jacoco {
+    toolVersion = "0.6.2.201302030002"
+    reportsDir = file("$buildDir/customJacocoReportDir")
+}
+jacocoTestReport {
+    reports {
+        xml.enabled false
+        csv.enabled false
+        html.destination "${buildDir}/jacocoHtml"
+    }
+}
 //-------------------------
 //-- Root project
 //-------------------------
@@ -359,3 +394,4 @@ project('android-sample-espresso-tests') {
 configure(rootProject) { description = 'Quality Analysis Tools 4 Android' }
 
 apply plugin: 'build-dashboard'
+
