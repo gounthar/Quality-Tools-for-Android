@@ -247,7 +247,7 @@ gradle :android-sample:installDebug
 
 ```bash
 # in parent folder
-gradle clean assembleDebug connectedInstrumentTest
+gradle clean assembleDebug connectedAndroidTest
 #export to sonar
 gradle :android-sample:sonarRunner
 ```
@@ -256,7 +256,7 @@ gradle :android-sample:sonarRunner
 
 ```bash
 # in parent folder
-gradle clean assembleDebug :android-sample-espresso-tests:connectedInstrumentTest
+gradle clean assembleDebug :android-sample-espresso-tests:connectedAndroidTest
 ```
 
 ### play robolectric tests : 
