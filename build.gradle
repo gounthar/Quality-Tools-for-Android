@@ -4,11 +4,8 @@ import com.android.build.gradle.api.TestVariant
 //project.configurations.compile.getProperties().each { println it }
 //println android.sourceSets.main.java.srcDirs
 
-apply plugin: "jacoco"
-apply plugin: "java"
-
 task wrapper(type: Wrapper) {
-    gradleVersion = '2.0'
+    gradleVersion = '1.12'
 }
 
 buildscript {
@@ -22,6 +19,7 @@ buildscript {
     dependencies {
         classpath 'com.android.tools.build:gradle:0.12.+'
         classpath 'com.novoda.gradle:robolectric-plugin:0.0.1'
+	//jacocoAnt 'org.jacoco:org.jacoco.ant:0.6.4.201312101107'
     }
 }
 
@@ -79,6 +77,7 @@ project('android-sample') {
         androidTestCompile "org.easymock:easymock:$easyMockVersion" exclude group: "cglib"
         androidTestCompile "org.mockito:mockito-core:$mockitoVersion"
         androidTestCompile "org.boundbox:boundbox-library:$boundBoxVersion"
+	androidTestCompile 'org.jacoco:org.jacoco.agent:0.7.1.201405082137:runtime'
     }
 
 
@@ -299,10 +298,68 @@ project('android-sample-robolectric-tests') {
         }
     }
 
+//------------------------
+//-- Jacoco 
+//------------------------
+    apply plugin: "jacoco"
+
+    jacoco {
+    toolVersion = "0.7.1.201405082137"
+    reportsDir = file("$buildDir/customJacocoReportDir")
+        testCoverageEnabled 	 = true
+}
+// Define coverage source.
+// If you have rs/aidl etc... add them here.
+def coverageSourceDirs = [
+    'src/test/java',
+]
+jacoco {
+    toolVersion = "0.7.1.201405082137"
+    reportsDir = file("$buildDir/customJacocoReportDir")
+}
+// This differs per what flavors buildTypes etc. 
+// But this example shows the 'testDebug'
+// which is standard for Robolectric
+task jacocoTestReport(type: JacocoReport, dependsOn: "sonarRunner") {
+    group = "Reporting"
+    description = "Generate Jacoco coverage reports after running tests."
+    reports {
+        xml.enabled = true // coveralls plugin depends on xml format report
+        html.enabled = true
+    }
+    // class R is used, but usage will not be covered, so ignore this class from report
+    // This differs per plugin version (0.10 -> 0.11) 
+    // have very different fileTrees.
+    // I have added rules to Ignore Dagger/Butterknife
+    classDirectories = fileTree(
+            dir: './build/intermediates/classes/debug',
+            excludes: ['com/myapp/R*.class',
+                       '**/*$InjectAdapter.class',
+                       '**/*$ModuleAdapter.class',
+                       '**/*$ViewInjector*.class'
+            ])
+    sourceDirectories = files(coverageSourceDirs)
+    executionData = files('build/jacoco/sonarRunner.exec')
+    // Bit hacky but fixes https://code.google.com/p/android/issues/detail?id=69174.
+    // We iterate through the compiled .class tree and rename $$ to $. 
+    doFirst {
+        new File('myapp/build/intermediates/classes/').eachFileRecurse { file ->
+            if (file.name.contains('$$')) {
+                file.renameTo(file.path.replace('$$', '$'))
+            }
+        }
+    }
+    afterEvaluate {
+        // just clean up coveralls dashboard, following reports are not of interest
+        //> Could not find property 'testDebug' on task ':android-sample-robolectric-tests:jacocoTestReport'.
+	// testDebug.reports.junitXml.enabled = false
+    }
+}
+
 }
 
 //-------------------------
-//-- Android Sample Espesso Tests Project
+//-- Android Sample Espresso Tests Project
 //-------------------------
 
 project('android-sample-espresso-tests') {
@@ -373,20 +430,7 @@ project('android-sample-espresso-tests') {
     }
 
 }
-//------------------------
-//-- Jacoco 
-//------------------------
-jacoco {
-    toolVersion = "0.6.2.201302030002"
-    reportsDir = file("$buildDir/customJacocoReportDir")
-}
-jacocoTestReport {
-    reports {
-        xml.enabled false
-        csv.enabled false
-        html.destination "${buildDir}/jacocoHtml"
-    }
-}
+
 //-------------------------
 //-- Root project
 //-------------------------
@@ -394,4 +438,6 @@ jacocoTestReport {
 configure(rootProject) { description = 'Quality Analysis Tools 4 Android' }
 
 apply plugin: 'build-dashboard'
+//apply from: 'https://raw.github.com/skyisle/gradle-jacoco-android/master/gradle-jacoco-android.gradle'
+
 
